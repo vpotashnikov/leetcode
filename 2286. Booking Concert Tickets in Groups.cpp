@@ -1,69 +1,56 @@
 class tree {
-    public:
-    tree* leaf_left = 0;
-    tree* leaf_right = 0;
-    int range_left, range_right;
+    // Balance tree with max & sum for left & right leaf
+    tree* leaf_left;
+    tree* leaf_right;
+    int range_left, max;
     long long sum;
-    int max, m;
-    long long init(int range_left, int range_right, int m) {
-        this->m = m;
+    bool end_leaf;
+    public:
+    // Init tree, return sum of childs
+    tree(int range_left, int range_right, int m) {
         this->max = m;
-        this->range_right = range_right;
         this->range_left = range_left;
+        this->end_leaf = (range_right - range_left == 1); 
         // if end leaf
-        if (range_right - range_left == 1) {
+        if (this->end_leaf) {
             this->sum = (long long)m;
-            return (long long)m;
+            return;
         }
-        // if not
-        long long sm = 0;
-        int  n = range_right - range_left;
-        int centr = range_left / 2 + range_right / 2; // Centr point. Left to be use first
-        if (n != 0 && range_left - centr == 0) centr++;
-        
-        this->leaf_left = new tree();
-        sm += this->leaf_left->init(range_left, centr, m);
 
-        if (range_right - centr >= 1) {
-            this->leaf_right = new tree();
-            sm += this->leaf_right->init(centr, range_right, m);
-        };
-        this->sum = sm;
-        return sm;
+        // if not
+        int centr = (range_left + range_right + 1) / 2;
+        this->leaf_left = new tree(range_left, centr, m);
+        this->leaf_right = new tree(centr, range_right, m);
+        this->sum = this->leaf_left->sum + this->leaf_right->sum;
     }
     vector<int> gather(int k, int maxRow) {
         if (k > this->max || this->range_left > maxRow) return vector<int> ();
-        if (this->range_right - this->range_left == 1) {
-            vector<int> rs = {this->range_left, this->m - this->max};
+        if (this->end_leaf) {
+            vector<int> rs = {this->range_left, this->max};
             this->max -= k;
             this->sum -= (long long)k;
             return rs;
         }
+        vector<int> rs;
         if (this->leaf_left->max >= k) {
-            vector<int> rs = this->leaf_left->gather(k, maxRow);
-            if (rs.size() == 0) return rs;
-            this->update_max();
-            this->sum -= (long long)k;
-            return rs;
+            rs = this->leaf_left->gather(k, maxRow);
+        } else if (this->leaf_right->max >= k) {
+            rs = this->leaf_right->gather(k, maxRow);
         }
-        if (this->leaf_right != 0 && this->leaf_right->max >= k) {
-            vector<int> rs = this->leaf_right->gather(k, maxRow);
-            if (rs.size() == 0) return rs;
-            this->update_max();
-            this->sum -= (long long)k;
-            return rs;
-        }
-        return vector<int> ();
+        if (rs.size() == 0) return rs;
+        this->update_max();
+        this->sum -= (long long)k;
+        return rs;
     }
     void update_max() {
         this->max = this->leaf_left->max;
-        if (this->leaf_right != 0 && this->leaf_right->max > this->max)
+        if (this->leaf_right->max > this->max)
             this->max = this->leaf_right->max;
     } 
     bool scatter(int k, int maxRow) {
         if ((long long)k > this->sum || this->range_left > maxRow) return false;
         // End point
-        if (this->range_right - this->range_left == 1) {
+        if (this->end_leaf) {
             this->max -= k;
             this->sum -= (long long)k;
             return true;
@@ -74,7 +61,7 @@ class tree {
             fl = this->leaf_left->scatter(k, maxRow);
         }
         // Try right
-        if (!fl && this->leaf_right != 0 && this->leaf_right->range_left <= maxRow) {
+        if (!fl && this->leaf_right->range_left <= maxRow) {
             fl = this->leaf_right->scatter((long long)k - this->leaf_left->sum, maxRow);
             if (fl) this->leaf_left->scatter(this->leaf_left->sum, maxRow);
         }
@@ -87,16 +74,20 @@ class tree {
 };
 class BookMyShow {
 private:
-    tree tree;  // Tree for count sum & max length 
+    tree* root;  // Tree for count sum & max length 
+    int m;
 public:
     BookMyShow(int n, int m) {
-        this->tree.init(0, n, m);
+        this->m = m;
+        this->root = new tree(0, n, m);
     }
     vector<int> gather(int k, int maxRow) {
-        return this->tree.gather(k, maxRow);
+        vector<int> rs = this->root->gather(k, maxRow);
+        if (rs.size() != 0) rs[1] =  this->m - rs[1];
+        return rs;
     }
     bool scatter(int k, int maxRow) {
-        return this->tree.scatter(k, maxRow);
+        return this->root->scatter(k, maxRow);
     }
 };
 
@@ -106,5 +97,4 @@ public:
  * vector<int> param_1 = obj->gather(k,maxRow);
  * bool param_2 = obj->scatter(k,maxRow);
  */
-
  
